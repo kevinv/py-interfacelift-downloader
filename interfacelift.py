@@ -44,7 +44,7 @@ def main():
     # Get the list of photo IDs
     photo_list = sorted(sys.argv[1:], reverse=True)
     if len(photo_list) == 0:
-        photo_list = sorted(open(list_file).read().split('\n'), reverse=True)
+        photo_list = sorted(open(list_file).read().strip().split('\n'), reverse=True)
 
     count = 1
     refer, pictures = make_request(count)
