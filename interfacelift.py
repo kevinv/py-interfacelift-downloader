@@ -1,56 +1,71 @@
-#!/usr/bin/env python
-import os, urllib2, re, sys, commands, random, time
+#!/usr/bin/python
+import sys
+import urllib2
+import re
+import commands
+
+list_file = 'photos.txt'
+curl_command = 'curl -# -L -O http://interfacelift.com%s -e "%s" -A "%s"'
+sizes = [
+    '1440x900',   # Macbook Pro
+    '1024x1024',  # iPad 2
+    '640x960',    # iPhone 4G
+    '1440x1280'   # Android
+]
 
 # -- Changable Variables
-url             = 'http://interfacelift.com/wallpaper/downloads/date/2_screens/2880x900/' #Browse to the page that has all the wallpaper you want and paste here
-directory       = '/home/user/wallpaper/2880x900' #Path to download to
-stoponfind      = '1' # Set to 0 to download all files even if the file exists and 1 to stop when it finds where it left off
-wgetpath        = '/usr/bin/wget' #Default on linux systems /usr/local/bin/wget on freebsd
+
+ #Browse to the page that has all the wallpaper you want and paste here
+url = ('http://interfacelift.com/wallpaper/downloads/date/widescreen/%s/'
+       % sizes[0])
 
 # -- Should not need to edit below here unless something stops working --
-useragent       = 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.2.3) Gecko/20100401 Firefox/3.6.3 (.NET CLR 3.5.30729)' #Fake useragent since wget is blocked
-pattern         = '(?<=<a href=")/wallpaper/.*jpg(?=">)' # The regex pattern used to look up picture url paths
-picturepattern  = '[^/]*$' # The regex pattern to pull picture filename to see if file exists
-wallpapercount  = 0
-count           = 1
 
-while count < 9999999:
-        headers    = { 'User-Agent' : useragent }
-        request    = urllib2.Request(url + "index" + str(count) + ".html", None, headers)
-        data       = urllib2.urlopen(request).read()
-        pictures   = re.findall(pattern, data)
-        urlcount   = len(pictures)
-        for picture in pictures:
-                m = re.search(picturepattern, picture)
-                picturefile=m.group()
-                if os.path.exists(directory + "/" + picturefile):
-                        if stoponfind == "1":
-                                print 'Directory up to date. Downloaded ' + str(wallpapercount) + ' new wallpaper.'
-                                quit()
-                status, output = commands.getstatusoutput(wgetpath + ' -P ' + directory + ' --random-wait -nc -U "' + useragent + '" ' + 'http://interfacelift.com' + picture)
-                if status == 0:
-                        print str(wallpapercount) + '. Downloaded http://interfacelift.com' + picture + ' ...'
-                else:
-                        print '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-                        print '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! WGET OUTPUT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-                        print '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-                        print '----------------------------------------------------------------------------------'
-                        print output
-                        print '----------------------------------------------------------------------------------'
-                        print '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-                        print '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-                        print '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-                        print str(wallpapercount) + '. DOWNLOAD FAILED check wget output above for reason.'
-                        print 'Exiting script ... wget returned non 0 exit status code: ' + str(status)
-                        quit()
-                wallpapercount += 1
-        if urlcount == 0:
-                print "Downloaded " + str(wallpapercount) + " wallpaper from InterfaceLift."
-                randomnum  = random.randint(5,10)
-                print 'Sleeping for :' + str(randomnum)
-                quit()
-        count += 1
-        randomnum  = random.randint(10,30)
-        print 'Sleeping for :' + str(randomnum)
-        time.sleep(randomnum)
+#Fake useragent since wget is blocked
+useragent = ('Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.2.3)'
+             ' Gecko/20100401 Firefox/3.6.3 (.NET CLR 3.5.30729)')
 
+# The regex pattern used to look up picture url paths
+pattern = '(?<=<a href=")/wallpaper/.*jpg(?=">)'
+
+
+def make_request(s_count):
+    headers = {'User-Agent': useragent}
+    request = urllib2.Request(url + "index" + str(s_count) + ".html",
+                              None, headers)
+    data = urllib2.urlopen(request).read()
+    pictures = re.findall(pattern, data)
+    urlcount = len(pictures)
+
+    return request.get_full_url(), pictures
+
+
+def main():
+    # Get the list of photo IDs
+    photo_list = sorted(sys.argv[1:], reverse=True)
+    if len(photo_list) == 0:
+        photo_list = sorted(open(list_file).read().split('\n'), reverse=True)
+
+    count = 1
+    refer, pictures = make_request(count)
+
+    for photo_id in photo_list:
+        photo_uri = [i for i in pictures if photo_id + '_' in i]
+
+        # Load another page and find it if the photo's on the current page
+        while len(photo_uri) != 1:
+            count = count + 1
+            refer, pictures = make_request(count)
+            photo_uri = [i for i in pictures if photo_id + '_' in i]
+
+        # Download all sizes for each requested photo
+        for uri in [photo_uri[0].replace(sizes[0], i) for i in sizes]:
+            command = curl_command % (uri, refer, useragent)
+            status, output = commands.getstatusoutput(command)
+            if status == 0:
+                print "OK:", uri[uri.rfind('/') + 1:]
+            else:
+                print "FAIL:", output
+
+if __name__ == '__main__':
+    main()

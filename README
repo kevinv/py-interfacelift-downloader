@@ -1,16 +1,18 @@
-To install just run the following:
+py-interfacelift-downloader
+To run, type `python interfacelift.py 1 2 3` where you replace the numbers with photo ids!
+If you don't provide photo ids as arguments, it reads the photo ids from './photos.txt'.
 
-wget --no-check-certificate https://github.com/dmacpherson/py-interfacelift-downloader/raw/master/interfacelift.py
+I made some changes from dmacpherson's original script:
+- Uses `curl' instead of `wget'
+- Script now takes in a list of photo ids (which you can get at interfacelift) instead of downloading all the photos so that you can choose specific photos to download
+- Downloads multiple sizes of the same wallpaper (ex. for multiple devices)
 
-Edit the variables to where you'd like to download from and download to and run "python interfacelift.py"
-
-
-
-The regex pattern matches any string which:
-
-- Is preceeded by <a href="
-- begins with /wallpaper/
-- ends in jpg
-- preceeds ">
-
-I think this is enough to filter out only the wanted links. Note that the matched string will include the random part of the URL so that the user never has to specify it manually. Each filename also contains the resolution. This could be added to the pattern in case it stops working.
+From original README:
+> The regex pattern matches any string which:
+> 
+> - Is preceeded by <a href="
+> - begins with /wallpaper/
+> - ends in jpg
+> - preceeds ">
+> 
+> I think this is enough to filter out only the wanted links. Note that the matched string will include the random part of the URL so that the user never has to specify it manually. Each filename also contains the resolution. This could be added to the pattern in case it stops working.
